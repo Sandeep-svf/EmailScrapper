@@ -68,6 +68,13 @@ def scrape_emails_from_url_list(urls, uploaded_file_name):
             job.save()
 
     except Exception as err:
+        for job in batch.jobs.filter(status__in=['pending', 'in_progress']):
+            job.status = 'failed'
+            job.end_time = datetime.now()
+            job.duration = job.end_time - (job.start_time or datetime.now())
+            job.emails = f"Batch failed due to: {str(err)}"
+            job.save()
+
         batch.status = 'failed'
         batch.save()
         raise err
@@ -78,6 +85,11 @@ def scrape_emails_from_url_list(urls, uploaded_file_name):
         except:
             pass
 
-    batch.status = 'completed'
+    # Final batch status logic
+    if batch.jobs.filter(status='completed').exists():
+        batch.status = 'completed' if not batch.jobs.filter(status='failed').exists() else 'completed_with_errors'
+    else:
+        batch.status = 'failed'
+
     batch.save()
     return batch.name
