@@ -1,4 +1,4 @@
-# EmailScrapper/scraper.py
+# EmailScrapper/scraper.py ok
 
 import re, time, html
 from datetime import datetime
