@@ -16,22 +16,21 @@ def get_next_batch_name():
     return f"RBSH{str(last_number + 1).zfill(3)}"
 
 def scrape_emails_from_url_list(urls, uploaded_file_name):
-    # Prevent concurrent scraping
     if EmailScrapeBatch.objects.filter(status='in_progress').exists():
-        return None
+        return None  # Prevent concurrent scraping
 
-    # Create new batch
+    # Create batch
     batch = EmailScrapeBatch.objects.create(
         name=get_next_batch_name(),
         status='in_progress',
         file_name=uploaded_file_name
     )
 
-    # Pre-create jobs with pending status
+    # Pre-create jobs with 'pending' status
     for url in urls:
         EmailScrapeJob.objects.create(batch=batch, url=url, status='pending')
 
-    # Setup headless Chrome for VPS
+    # Configure headless Chrome (VPS friendly)
     options = uc.ChromeOptions()
     options.add_argument('--headless')
     options.add_argument('--no-sandbox')
@@ -47,7 +46,9 @@ def scrape_emails_from_url_list(urls, uploaded_file_name):
             job.start_time = datetime.now()
             try:
                 driver.get(job.url)
-                time.sleep(3)
+
+                # Give time for JS content to load
+                time.sleep(10)
 
                 soup = BeautifulSoup(driver.page_source, 'html.parser')
                 text = soup.get_text()
@@ -58,7 +59,8 @@ def scrape_emails_from_url_list(urls, uploaded_file_name):
 
                 all_emails = set(raw_emails).union(mailto_emails)
                 job.emails = ', '.join(all_emails)
-                job.status = 'completed'
+                job.status = 'completed' if all_emails else 'failed'
+
             except Exception as e:
                 job.emails = f"Error: {str(e)}"
                 job.status = 'failed'
@@ -68,6 +70,7 @@ def scrape_emails_from_url_list(urls, uploaded_file_name):
             job.save()
 
     except Exception as err:
+        # Mark all remaining jobs as failed
         for job in batch.jobs.filter(status__in=['pending', 'in_progress']):
             job.status = 'failed'
             job.end_time = datetime.now()
@@ -85,7 +88,7 @@ def scrape_emails_from_url_list(urls, uploaded_file_name):
         except:
             pass
 
-    # Final batch status logic
+    # Update final batch status
     if batch.jobs.filter(status='completed').exists():
         batch.status = 'completed' if not batch.jobs.filter(status='failed').exists() else 'completed_with_errors'
     else:
