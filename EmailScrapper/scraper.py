@@ -1,62 +1,72 @@
-import re
-import time
-import html
+# EmailScrapper/scraper.py
+
+import re, time, html
+from datetime import datetime
 from bs4 import BeautifulSoup
+from scraper.models import EmailScrapeBatch, EmailScrapeJob
 import undetected_chromedriver as uc
 
 EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
 
-def scrape_emails_from_url_list(urls):
-    results = []
+def get_next_batch_name():
+    last_batch = EmailScrapeBatch.objects.order_by('-id').first()
+    if not last_batch:
+        return "RBSH001"
+    last_number = int(last_batch.name.replace("RBSH", ""))
+    return f"RBSH{str(last_number + 1).zfill(3)}"
 
+def scrape_emails_from_url_list(urls, uploaded_file_name):
+    from datetime import datetime
+    import time, re, html
+    from bs4 import BeautifulSoup
+    import undetected_chromedriver as uc
+
+    EMAIL_REGEX = r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"
+
+    # Create batch
+    last_batch = EmailScrapeBatch.objects.order_by('-id').first()
+    next_batch_number = 1 if not last_batch else int(last_batch.name.replace("RBSH", "")) + 1
+    batch = EmailScrapeBatch.objects.create(
+        name=f"RBSH{str(next_batch_number).zfill(3)}",
+        status='in_progress',
+        file_name=uploaded_file_name
+    )
+
+    # Pre-create jobs with 'pending' status
+    for url in urls:
+        EmailScrapeJob.objects.create(batch=batch, url=url, status='pending')
+
+    # Start browser
     options = uc.ChromeOptions()
-    options.headless = False  # Set to True after debugging
-    options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-
-    #options.binary_location = "/usr/bin/google-chrome"
-
+    options.headless = True
     driver = uc.Chrome(options=options)
 
-    for url in urls:
+    for job in batch.jobs.all():
+        job.status = 'in_progress'
+        job.start_time = datetime.now()
         try:
-            print(f"\n🔍 Scraping: {url}")
-            driver.get(url)
-
-            # Wait for full JavaScript rendering
-            print("⏳ Waiting for JS to render...")
-            time.sleep(5)  # increase if needed
-
-            html_content = driver.page_source
-            soup = BeautifulSoup(html_content, 'html.parser')
-
-            # Extract emails from text
+            driver.get(job.url)
+            time.sleep(3)
+            soup = BeautifulSoup(driver.page_source, 'html.parser')
             text = soup.get_text()
-            raw_emails = re.findall(EMAIL_REGEX, text)
+            emails = set(re.findall(EMAIL_REGEX, text))
 
-            # Extract emails from mailto links
             mailto_links = [a['href'] for a in soup.find_all('a', href=True) if a['href'].startswith("mailto:")]
-            mailto_emails = []
-            for link in mailto_links:
-                decoded = html.unescape(link)
-                email = decoded[7:]
-                mailto_emails.append(email)
+            mailto_emails = [html.unescape(link)[7:] for link in mailto_links]
 
-            all_emails = set(raw_emails + mailto_emails)
-            print(f"✅ Found emails: {all_emails}")
-
-            results.append({'url': url, 'emails': ', '.join(all_emails)})
-
+            all_emails = set(emails).union(mailto_emails)
+            job.emails = ', '.join(all_emails)
+            job.status = 'completed'
         except Exception as e:
-            print(f"❌ Error scraping {url}: {e}")
-            results.append({'url': url, 'emails': f"Error: {str(e)}"})
+            job.emails = f"Error: {e}"
+            job.status = 'failed'
+        job.end_time = datetime.now()
+        job.duration = job.end_time - job.start_time
+        job.save()
 
     driver.quit()
-    return results
+    batch.status = 'completed'
+    batch.save()
 
-# Run for testing
-if __name__ == "__main__":
-    urls = ["https://www.indiafilings.com/search/mvk-housing-llp-cin-ACM-3650"]
-    emails_found = scrape_emails_from_url_list(urls)
-    print("\n📦 Final extracted emails:", emails_found)
+
+

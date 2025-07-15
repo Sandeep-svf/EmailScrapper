@@ -1,38 +1,56 @@
-import io
-import os
+# EmailScrapper/views.py
+from threading import Thread
+
+from django.shortcuts import render, redirect, get_object_or_404
 import pandas as pd
-from django.conf import settings
-from django.shortcuts import render
-from django.http import HttpResponse
 from .scraper import scrape_emails_from_url_list
+from scraper.models import EmailScrapeBatch, EmailScrapeJob
+from django.http import HttpResponse, JsonResponse
+import csv
 
 def home(request):
+    batches = EmailScrapeBatch.objects.order_by('-created_at')
+    is_running = EmailScrapeBatch.objects.filter(status='in_progress').exists()
+    return render(request, 'index.html', {'batches': batches, 'is_running': is_running})
+
+def scraping_progress(request):
+    latest_job = EmailScrapeJob.objects.order_by('-created_at').first()
+    if not latest_job:
+        return JsonResponse({'progress': 0})
+    total = latest_job.batch.jobs.count()
+    completed = latest_job.batch.jobs.filter(status='completed').count()
+    return JsonResponse({
+        'completed': completed,
+        'total': total,
+        'percentage': round((completed / total) * 100, 2) if total else 0
+    })
+
+def start_scraping(request):
     if request.method == 'POST' and request.FILES.get('file'):
-        file = request.FILES['file']
-        file_name = file.name
+        if EmailScrapeBatch.objects.filter(status='in_progress').exists():
+            return HttpResponse("Scraping already in progress. Please wait.")
 
-        # Save the uploaded file to MEDIA_ROOT
-        file_path = os.path.join(settings.MEDIA_ROOT, file_name)
-        with open(file_path, 'wb') as destination:
-            for chunk in file.chunks():
-                destination.write(chunk)
-
-        # Now read the file and process it
-        df = pd.read_excel(file_path)
+        df = pd.read_excel(request.FILES['file'])
         urls = df.iloc[:, 0].dropna().tolist()
+        file_name = request.FILES['file'].name
 
-        results = scrape_emails_from_url_list(urls)
+        # Run scraping in a background thread
+        thread = Thread(target=scrape_emails_from_url_list, args=(urls,), kwargs={'uploaded_file_name': file_name})
+        thread.start()
 
-        output = io.BytesIO()
-        df_out = pd.DataFrame(results)
-        df_out.to_excel(output, index=False)
-        output.seek(0)
+        return redirect('home')
+    return redirect('home')
 
-        response = HttpResponse(
-            output,
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        response['Content-Disposition'] = 'attachment; filename="scraped_emails.xlsx"'
-        return response
+def batch_detail(request, batch_name):
+    batch = get_object_or_404(EmailScrapeBatch, name=batch_name)
+    return render(request, 'batch_detail.html', {'batch': batch})
 
-    return render(request, 'index.html')
+def download_batch_csv(request, batch_name):
+    batch = get_object_or_404(EmailScrapeBatch, name=batch_name)
+    response = HttpResponse(content_type='text/csv')
+    response['Content-Disposition'] = f'attachment; filename="{batch_name}.csv"'
+    writer = csv.writer(response)
+    writer.writerow(['URL', 'Status', 'Emails'])
+    for job in batch.jobs.all():
+        writer.writerow([job.url, job.status, job.emails])
+    return response

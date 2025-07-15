@@ -1,0 +1,34 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Scraped Emails</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+<div class="container">
+    <h2>Scraped Emails</h2>
+    <table>
+        <tr>
+            <th>URL</th>
+            <th>Status</th>
+            <th>Emails</th>
+            <th>Created</th>
+            <th>Actions</th>
+        </tr>
+        {% for job in jobs %}
+            <tr>
+                <td>{{ job.url }}</td>
+                <td>{{ job.status }}</td>
+                <td>{{ job.emails|truncatechars:100 }}</td>
+                <td>{{ job.created_at }}</td>
+                <td>
+                    <a href="{% url 'delete_job' job.id %}">Delete</a>
+                </td>
+            </tr>
+        {% endfor %}
+    </table>
+</div>
+</body>
+</html>

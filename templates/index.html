@@ -1,20 +1,74 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
     <title>Email Scraper</title>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <style>
+        #progress-container {
+            margin-top: 20px;
+        }
+        #progress-bar {
+            height: 20px;
+            background: #4caf50;
+            transition: width 0.5s;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Email Scraper Tool</h1>
-        <form method="post" enctype="multipart/form-data">
-            {% csrf_token %}
-            <input type="file" name="file" required>
-            <button type="submit">Extract Emails</button>
-        </form>
+<h1>Email Scraper</h1>
+
+<form method="post" action="{% url 'start_scraping' %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="file" name="file" required>
+    <button type="submit" id="scrape-btn" {% if batches.0.status == 'in_progress' %}disabled{% endif %}>
+        {% if batches.0.status == 'in_progress' %}Scraping...{% else %}Start Scraping{% endif %}
+    </button>
+</form>
+
+<div id="progress-container" style="display:none;">
+    <div style="width: 100%; background: #eee; border-radius: 8px; overflow: hidden;">
+        <div id="progress-bar" style="width: 0%;"></div>
     </div>
-    <script src="{% static 'js/script.js' %}"></script>
+    <p id="progress-text">Scraping 0 / 0</p>
+</div>
+
+<h2>Scrape Batches</h2>
+<ul>
+    {% for batch in batches %}
+        <li>
+            {{ batch.name }} ({{ batch.status }}) -
+            <a href="{% url 'batch_detail' batch.name %}">View</a> |
+            <a href="{% url 'download_batch_csv' batch.name %}">Download</a>
+        </li>
+    {% endfor %}
+</ul>
+
+<script>
+    let interval;
+    function pollProgress() {
+        fetch("/progress/")
+            .then(res => res.json())
+            .then(data => {
+                const bar = document.getElementById("progress-bar");
+                const text = document.getElementById("progress-text");
+                const container = document.getElementById("progress-container");
+                container.style.display = "block";
+                bar.style.width = data.percentage + "%";
+                text.innerText = `Scraping ${data.completed} / ${data.total} (${data.percentage}%)`;
+                if (data.completed >= data.total) {
+                    clearInterval(interval);
+                    setTimeout(() => location.reload(), 2000);
+                }
+            });
+    }
+
+    const form = document.querySelector('form');
+    form.addEventListener("submit", () => {
+        document.getElementById("progress-container").style.display = "block";
+        interval = setInterval(pollProgress, 2000);
+    });
+</script>
+
 </body>
 </html>

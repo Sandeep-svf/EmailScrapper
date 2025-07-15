@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ batch.name }} Details</title>
+</head>
+<body>
+<h2>{{ batch.name }} - {{ batch.status }}</h2>
+<a href="{% url 'home' %}">← Back to Home</a>
+
+<table>
+    <tr>
+        <th>URL</th>
+        <th>Status</th>
+        <th>Emails</th>
+    </tr>
+    {% for job in batch.jobs.all %}
+        <tr>
+            <td>{{ job.url }}</td>
+            <td>{{ job.status }}</td>
+            <td>{{ job.emails|truncatechars:100 }}</td>
+        </tr>
+    {% endfor %}
+</table>
+</body>
+</html>

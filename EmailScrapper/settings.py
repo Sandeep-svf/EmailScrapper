@@ -23,9 +23,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-gchm(upj)1m8s-0m!ig3!roq-1_&9l@!b2ud(+td(-=kc0idbd'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['82.29.162.32', '127.0.0.1','localhost']
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'email_scraper_db',
+        'USER': 'erp_user',  # or your local MySQL user
+        'PASSWORD': '*Edu9450249399',  # your local MySQL password
+        'HOST': '127.0.0.1',
+        'PORT': '3306',
+    }
+}
+
 
 
 
@@ -38,6 +50,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'scraper',
 ]
 
 MIDDLEWARE = [
@@ -75,12 +88,7 @@ WSGI_APPLICATION = 'EmailScrapper.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
