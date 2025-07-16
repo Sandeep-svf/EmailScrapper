@@ -27,18 +27,28 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['82.29.162.32', '127.0.0.1','localhost']
 
+#DATABASES = {
+#    'default': {
+#        'ENGINE': 'django.db.backends.mysql',
+#        'NAME': 'email_scraper_db',
+#        'USER': 'erp_user',  # or your local MySQL user
+#        'PASSWORD': '*Edu9450249399',  # your local MySQL password
+#        'HOST': '127.0.0.1',
+#        'PORT': '3306',
+#    }
+#}
+
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'email_scraper_db',
-        'USER': 'erp_user',  # or your local MySQL user
-        'PASSWORD': '*Edu9450249399',  # your local MySQL password
+        'USER': 'root',  # or your local MySQL user
+        'PASSWORD': '25092303',  # your local MySQL password
         'HOST': '127.0.0.1',
         'PORT': '3306',
     }
 }
-
-
 
 
 # Application definition

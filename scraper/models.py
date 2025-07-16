@@ -5,7 +5,7 @@ from django.db import models
 class EmailScrapeBatch(models.Model):
     name = models.CharField(max_length=20, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, default='pending')  # pending, in_progress, completed
+    status = models.CharField(max_length=50, default='pending')  # pending, in_progress, completed
     file_name = models.CharField(max_length=255, blank=True, null=True)
 
     def __str__(self):
