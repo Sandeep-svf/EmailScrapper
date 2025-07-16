@@ -30,7 +30,7 @@ def get_stealth_driver():
     options.add_argument(f"user-agent={user_agent}")
     options.add_argument("--start-maximized")
 
-    driver = uc.Chrome(options=options, use_subprocess=True)
+    driver = uc.Chrome(version_main=137,options=options, use_subprocess=True)
 
     stealth(driver,
             languages=["en-US", "en"],
