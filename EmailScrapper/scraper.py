@@ -1,6 +1,8 @@
 import re
 import time
 import html
+import shutil
+import os
 from datetime import datetime
 from bs4 import BeautifulSoup
 from scraper.models import EmailScrapeBatch, EmailScrapeJob
@@ -30,7 +32,7 @@ def get_stealth_driver():
     options.add_argument(f"user-agent={user_agent}")
     options.add_argument("--start-maximized")
 
-    driver = uc.Chrome(version_main=137,options=options, use_subprocess=True)
+    driver = uc.Chrome(version_main=137, options=options, use_subprocess=True)
 
     stealth(driver,
             languages=["en-US", "en"],
@@ -38,8 +40,7 @@ def get_stealth_driver():
             platform="Win32",
             webgl_vendor="Intel Inc.",
             renderer="Intel Iris OpenGL Engine",
-            fix_hairline=True,
-            )
+            fix_hairline=True)
 
     return driver
 
@@ -51,11 +52,11 @@ def scrape_job(job):
         driver = get_stealth_driver()
         job.status = 'in_progress'
 
-        print(f"\n Scraping: {job.url}")
+        print(f" Scraping: {job.url}")
         driver.get(job.url)
 
         print(" Waiting for JS to render...")
-        WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.TAG_NAME, "body")))
         time.sleep(5)
 
         try:
@@ -92,15 +93,34 @@ def scrape_job(job):
 
     finally:
         try:
-            time.sleep(2)
+            time.sleep(1)
             if driver:
                 driver.quit()
         except:
             pass
 
+        #  Clean up temp files right after each job to save space
+        clean_temp_dirs()
+
         job.end_time = datetime.now()
         job.duration = job.end_time - job.start_time if job.start_time else None
         job.save()
+
+
+def clean_temp_dirs():
+    paths = [
+        "/root/.local/share/undetected_chromedriver",
+        "/root/.config/google-chrome",
+        "/root/.config/chromium"
+    ]
+    for path in paths:
+        try:
+            if os.path.exists(path):
+                shutil.rmtree(path)
+                print(f"Cleaned: {path}")
+        except Exception as e:
+            print(f"Cleanup failed at {path}: {e}")
+
 
 def scrape_emails_from_url_list(urls, uploaded_file_name):
     if EmailScrapeBatch.objects.filter(status='in_progress').exists():
@@ -139,4 +159,5 @@ def scrape_emails_from_url_list(urls, uploaded_file_name):
     except Exception as e:
         print(f" Failed to update batch status: {e}")
 
+    clean_temp_dirs()
     return batch.name
