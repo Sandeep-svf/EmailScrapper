@@ -28,15 +28,20 @@ def get_stealth_driver():
     user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
 
     options = uc.ChromeOptions()
-    options.add_argument("--headless=new")  #  Important for Chrome 137+
+    options.headless = True
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-blink-features=AutomationControlled")
-    options.add_argument("--remote-debugging-pipe")  #  Helps pipe communication
     options.add_argument("--disable-gpu")
     options.add_argument("--window-size=1920,1080")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--remote-debugging-port=9222")
     options.add_argument(f"user-agent={user_agent}")
     options.add_argument("--start-maximized")
+
+    # ⛑ If you're running as root, this flag is critical
+    options.add_argument("--no-zygote")
 
     driver = uc.Chrome(version_main=137, options=options, use_subprocess=True)
 
@@ -49,6 +54,7 @@ def get_stealth_driver():
             fix_hairline=True)
 
     return driver
+
 
 
 def scrape_job(job):
