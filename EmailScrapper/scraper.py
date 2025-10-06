@@ -25,10 +25,7 @@ def get_next_batch_name():
 
 
 def get_stealth_driver():
-
-    chromium_path = "/snap/bin/chromium"
-
-    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.7339.207 Safari/537.36"
+    user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36"
 
     options = uc.ChromeOptions()
     options.headless = True
@@ -46,7 +43,7 @@ def get_stealth_driver():
     # ⛑ If you're running as root, this flag is critical
     options.add_argument("--no-zygote")
 
-    driver = uc.Chrome(driver_executable_path=chromium_path, options=options, use_subprocess=True)
+    driver = uc.Chrome(version_main=140, options=options, use_subprocess=True)
 
     stealth(driver,
             languages=["en-US", "en"],
